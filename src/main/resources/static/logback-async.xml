@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+
+    <!-- Console Appender -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{X-Correlation-ID:-SYSTEM}]:  [%-5level] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File Appender -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/app.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/app.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{X-Correlation-ID:-SYSTEM}]:  [%-5level] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Async Appender for File -->
+    <appender name="ASYNC-FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>5000</queueSize>  <!-- Adjust the queue size based on expected load -->
+        <discardingThreshold>0</discardingThreshold> <!-- Drop TRACE and DEBUG logs when the queue is full -->
+        <appender-ref ref="FILE"/>
+    </appender>
+
+    <!-- Async Appender for Console -->
+    <appender name="ASYNC-STDOUT" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>5000</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <appender-ref ref="STDOUT"/>
+    </appender>
+
+    <!-- Configuration for the "dev" environment -->
+    <springProfile name="dev">
+        <root level="INFO">
+            <appender-ref ref="ASYNC-STDOUT"/>
+            <appender-ref ref="ASYNC-FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- Production Profile Configuration -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="ASYNC-FILE"/>
+        </root>
+    </springProfile>
+
+</configuration>

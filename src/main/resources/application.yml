@@ -1,0 +1,59 @@
+spring:
+  profiles:
+    active: dev
+
+#logging:
+#  level:
+#    org:
+#      root: DEBUG
+#      springframework:
+#        web: DEBUG
+#        transaction: TRACE
+#      hibernate: DEBUG
+
+logging:
+  level:
+    org:
+      springframework: INFO
+    root: ${LOG_LEVEL:INFO}
+  config: classpath:logback.xml
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, metrics
+  metrics:
+    enable:
+      all: true
+
+server:
+  servlet:
+    session:
+      cookie:
+        enabled: false
+
+
+token:
+  signing:
+    key: ${JWT_SECRET}
+
+# set cookie expiry for 30 minutes
+jwt:
+  cookieName: __fim_id
+  refreshCookieName: __fim_rf_id
+  secret: ${JWT_SECRET}
+  cookieAccessExpiration: ${JWT_COOKIES_ACCESS_EXPIRATION:36000}
+  cookieRefreshExpiration: ${JWT_COOKIES_REFRESH_EXPIRATION:54000}
+
+
+mailjet:
+  apikey: ${MAILJET_API_KEY}
+  secret: ${MAILJET_SECRET}
+
+
+
+
+
+
