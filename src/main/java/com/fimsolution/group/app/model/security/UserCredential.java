@@ -1,30 +1,28 @@
 package com.fimsolution.group.app.model.security;
 
+import com.fimsolution.group.app.model.business.f2f.User;
+import com.fimsolution.group.app.utils.GenerationUtil;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Entity
 @Table(name = "user_credentials", indexes = {
         @Index(name = "idx_username", columnList = "username", unique = true)
 })
-@Data
+@Getter
+@Setter
+@ToString
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserCredentials {
+public class UserCredential {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @Column(length = 36, unique = true, nullable = false)
+    private String id;
 
-    private String userId;
 
     private String firstname;
 
@@ -50,12 +48,22 @@ public class UserCredentials {
     @Column(nullable = false, columnDefinition = "boolean default true")
     private boolean accountNonLocked;
 
-    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @JoinTable(
-            name = "user_roles", // The join table name
-            joinColumns = @JoinColumn(name = "user_credentials_id"), // Foreign key for UserCredentials
-            inverseJoinColumns = @JoinColumn(name = "role_id") // Foreign key for Role
-    )
-    private Set<Role> roles = new HashSet<>();
+    @OneToMany(mappedBy = "userCredential", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    private Set<UserRole> userRole;
+
+
+    @OneToOne(mappedBy = "userCredential", cascade = CascadeType.ALL, orphanRemoval = true)
+    private User user;
+
+
+    @OneToOne(mappedBy = "userCredential", cascade = CascadeType.ALL, orphanRemoval = true)
+    private RefreshToken refreshToken;
+
+    @PrePersist
+    public void generateId() {
+        this.id = GenerationUtil.generateUniqueId();
+    }
+
 
 }

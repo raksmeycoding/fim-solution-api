@@ -1,6 +1,7 @@
 package com.fimsolution.group.app.dto.auth;
 
 
+import com.fimsolution.group.app.annotation.ValidPassword;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -36,11 +37,11 @@ public class RegisterRequest {
     private String email;
 
     @Schema(description = "The password of the user", example = "P@ssw0rd!")
-    @Size(min = 8, message = "Password must be at least 8 characters long")
+    @ValidPassword
     private String password;
 
     @Schema(description = "The confirmed password of the user", example = "P@ssw0rd!")
-    @Size(min = 8, message = "Password must be at least 8 characters long")
+    @ValidPassword
     private String confirmPassword;
 
     @Schema(description = "The phone number of the user", example = "+1234567890")

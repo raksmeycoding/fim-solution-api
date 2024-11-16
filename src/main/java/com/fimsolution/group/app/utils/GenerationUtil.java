@@ -15,4 +15,9 @@ public class GenerationUtil {
     }
 
 
+    public static String generateUniqueId() {
+        return UUID.randomUUID().toString(); // Generate a unique UUID and convert it to a String
+    }
+
+
 }

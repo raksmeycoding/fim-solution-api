@@ -4,45 +4,38 @@ package com.fimsolution.group.app.service.seviceImpl;
 import com.fimsolution.group.app.constant.ResponseStatus;
 import com.fimsolution.group.app.dto.GenericDto;
 
+import com.fimsolution.group.app.dto.RequestDto;
+import com.fimsolution.group.app.dto.RespondDto;
 import com.fimsolution.group.app.exception.AlreadyExistException;
-import com.fimsolution.group.app.model.security.Role;
-import com.fimsolution.group.app.model.security.UserCredentials;
-import com.fimsolution.group.app.model.security.UserDetailsImpl;
-import com.fimsolution.group.app.repository.AppUserRepository;
+import com.fimsolution.group.app.model.business.f2f.User;
+import com.fimsolution.group.app.model.security.*;
+import com.fimsolution.group.app.repository.*;
 
 import com.fimsolution.group.app.dto.auth.RegisterRequest;
 import com.fimsolution.group.app.dto.auth.UserLoginRequest;
-import com.fimsolution.group.app.repository.RefreshTokenRepository;
-import com.fimsolution.group.app.repository.UserCredentialRepository;
+import com.fimsolution.group.app.repository.f2f.UsersRepository;
 import com.fimsolution.group.app.security.JwtServiceImpl;
 import com.fimsolution.group.app.security.LogoutServiceHandler;
-import com.fimsolution.group.app.security.RefreshTokenServiceImpl;
 import com.fimsolution.group.app.service.AuthenticationService;
 import com.fimsolution.group.app.service.RoleService;
+import com.fimsolution.group.app.utils.JwtUtils;
 import com.fimsolution.group.app.utils.ProfileHelper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.webjars.NotFoundException;
 
-import java.io.IOException;
-import java.time.Duration;
 import java.util.Optional;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +46,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final RoleService roleServiceImpl;
     private final UserCredentialRepository userCredentialRepository;
     private final LogoutServiceHandler logoutServiceHandler;
+    private final UserRoleRepository userRoleRepository;
+    private final RoleRepository roleRepository;
+    private final UsersRepository usersRepository;
+    private final JwtUtils jwtUtils;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Value("${jwt.cookieAccessExpiration}")
     private int jwtCookieAccessExpiration;
@@ -61,21 +59,20 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final ProfileHelper profileHelper;
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.DEFAULT)
-    public GenericDto<String> register(GenericDto<RegisterRequest> requestDto) {
+    @Transactional
+    public RespondDto<String> register(RequestDto<RegisterRequest> requestDto) {
         logger.info("request body:{}", requestDto);
 
-        RegisterRequest request = requestDto.getData();
+        RegisterRequest request = requestDto.getRequest();
 
         // User already existing validation
-        Optional<UserCredentials> foundUser = userCredentialRepository.findByUsername(request.getEmail());
+        Optional<UserCredential> foundUser = userCredentialRepository.findByUsername(request.getEmail());
 
         foundUser.ifPresent(user -> {
             throw new AlreadyExistException("User already exists in our system");
         });
 
-        UserCredentials userCredentials = UserCredentials.builder()
-                .userId(null)
+        UserCredential userCredential = UserCredential.builder()
                 .username(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .firstname(request.getFirstName())
@@ -87,35 +84,53 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .credentialsNonExpired(true)
                 .build();
 
-        // find role or create default role
-        Role role = roleServiceImpl.getOrCreateDefaultRole();
-
-        userCredentials.setRoles(Set.of(role));
-
-        UserCredentials userCredential = userCredentialRepository.save(userCredentials);
+        // Save registered user to db first
+        UserCredential registerUser = userCredentialRepository.save(userCredential);
 
 
-//        String username = user.getUsername();
-//        UserDetailsImpl userDetails = new UserDetailsImpl(null, username, null, null);
-//        String accessToken = jwtServiceImpl.generateToken(userDetails);
-//
-//        ResponseCookie responseCookie = ResponseCookie.fromClientResponse("accessToken", accessToken)
-//                .httpOnly(true)
-//                .secure(true)
-//                .path("/")
-//                .maxAge(cookieExpiry)
-//                .build();
-//
-//
-//        response.addHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
-//
-////        response.getWriter().write("Login successful");
-//        response.setStatus(HttpServletResponse.SC_OK);
+        Optional<User> optionalPreFindUser = usersRepository.findByEmail(request.getEmail());
 
 
-        return new GenericDto<>(ResponseStatus.CREATED);
+        if (optionalPreFindUser.isPresent()) {
+
+            User newUser = optionalPreFindUser.get();
+
+            newUser.setUserCredential(registerUser);
+
+            usersRepository.save(newUser);
+
+        } else {
+
+            // Save User repository
+            User user = User.builder().familyName("DEFAULT").givenName("DEFAULT").middleName("DEFAULT").nickName("DEFAULT").email(userCredential.getUsername()).build();
+            user.setUserCredential(userCredential);
+            user = usersRepository.save(user);
+        }
+
+
+        // Find Role
+        Optional<Role> optionalRole = roleRepository.findByName("ROLE_USER");
+
+        if (optionalRole.isEmpty()) {
+            throw new NotFoundException("Role not found");
+        }
+
+
+        UserRole userRole = UserRole.builder()
+                .role(optionalRole.get())
+                .userCredential(registerUser)
+                .build();
+
+
+        userRoleRepository.save(userRole);
+
+        // ToDo: Sending OPT to user
+
+
+        return RespondDto.<String>builder().httpStatusName(HttpStatus.CREATED).httpStatusCode(HttpStatus.CREATED.value()).data("Register successfully").build();
 
     }
+
 
     @Override
     public GenericDto<?> logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
@@ -125,30 +140,45 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
+    @Transactional
     public GenericDto<String> login(GenericDto<UserLoginRequest> requestDto, HttpServletResponse response) {
         UserLoginRequest userLoginRequest = requestDto.getData();
         String email = userLoginRequest.getEmail();
         String password = userLoginRequest.getPassword();
 
-        UserCredentials userCredentials = userCredentialRepository.findByUsername(email).orElseThrow(() -> new NotFoundException("User has not been found"));
+        UserCredential userCredential = userCredentialRepository.findByUsername(email).orElseThrow(() -> new NotFoundException("User has not been found"));
 
-        boolean matchedPassword = passwordEncoder.matches(password, userCredentials.getPassword());
+        boolean matchedPassword = passwordEncoder.matches(password, userCredential.getPassword());
         if (!matchedPassword) {
             throw new RuntimeException("Password is not matched!");
         }
 
         UserDetailsImpl userDetails = UserDetailsImpl.builder().username(email).build();
-        String accessToken = jwtServiceImpl.generateToken(userDetails);
+//        String accessToken = jwtServiceImpl.generateToken(userDetails);
+//        String accessToken = jwtUtils.generateJwtToken();
 
-        ResponseCookie responseCookie = ResponseCookie.fromClientResponse("accessToken", accessToken)
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(jwtCookieAccessExpiration)
-                .build();
+//        Save to db
+//        String refreshToken = jwtUtils.generateJwtToken();
 
 
-        response.addHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
+        RefreshToken newRefreshToken = new RefreshToken();
+
+        if (userCredential.getRefreshToken() == null) {
+            newRefreshToken.setUserCredential(userCredential);
+//            newRefreshToken.setToken(refreshToken);
+            newRefreshToken = refreshTokenRepository.save(newRefreshToken);
+        }
+
+
+//        ResponseCookie responseCookie = ResponseCookie.fromClientResponse("accessToken", accessToken)
+//                .httpOnly(true)
+//                .secure(true)
+//                .path("/")
+//                .maxAge(jwtCookieAccessExpiration)
+//                .build();
+
+
+//        response.addHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
 
 //        response.getWriter().write("Login successful");
         response.setStatus(HttpServletResponse.SC_OK);

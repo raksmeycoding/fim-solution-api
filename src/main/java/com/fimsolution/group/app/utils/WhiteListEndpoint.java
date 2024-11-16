@@ -14,6 +14,8 @@ public class WhiteListEndpoint {
                     "/swagger-ui/**",
                     "/webjars/**",
                     "/api/v1/auth/**",
+                    "/h2-console/**",
+                    "/favicon.ico"
             };
 
 

@@ -1,9 +1,11 @@
 package com.fimsolution.group.app.security;
 
 
-import com.fimsolution.group.app.model.security.UserCredentials;
+import com.fimsolution.group.app.model.security.UserCredential;
 import com.fimsolution.group.app.model.security.UserDetailsImpl;
 import com.fimsolution.group.app.repository.UserCredentialRepository;
+import com.fimsolution.group.app.repository.f2f.LoanUsersRepository;
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,15 +19,19 @@ public class UserDetailsServiceImpl implements org.springframework.security.core
 
 
     private final UserCredentialRepository userCredentialRepository;
+    private final LoanUsersRepository loanUsersRepository;
 
-    public UserDetailsServiceImpl(UserCredentialRepository userCredentialRepository) {
+
+    public UserDetailsServiceImpl(UserCredentialRepository userCredentialRepository, LoanUsersRepository loanUsersRepository) {
         this.userCredentialRepository = userCredentialRepository;
+        this.loanUsersRepository = loanUsersRepository;
     }
 
     @Override
+    @Transactional
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         logger.debug("Entering in loadUserByUsername Method...");
-        UserCredentials user = userCredentialRepository.findByUsername(username)
+        UserCredential user = userCredentialRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User has not been found"));
         logger.info("User Authenticated Successfully");
         logger.info("UserCredentials: {}", user);

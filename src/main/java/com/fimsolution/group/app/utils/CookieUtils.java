@@ -15,4 +15,13 @@ public class CookieUtils {
                 .map(Cookie::getValue)
                 .findFirst();
     }
+
+
+    public static Optional<String> readCookie(String key, HttpServletRequest request) {
+        return Arrays.stream(request.getCookies())
+                .filter(c -> key.equals(c.getName()))
+                .map(Cookie::getValue)
+                .findAny();
+    }
+
 }

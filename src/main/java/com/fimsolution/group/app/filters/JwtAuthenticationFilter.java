@@ -3,6 +3,8 @@ package com.fimsolution.group.app.filters;
 import com.fimsolution.group.app.security.JwtService;
 import com.fimsolution.group.app.security.UserDetailsServiceImpl;
 import com.fimsolution.group.app.utils.FilterHelper;
+import com.fimsolution.group.app.utils.JwtUtils;
+import io.micrometer.common.util.StringUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -29,6 +31,8 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsServiceImpl userService;
+    private final JwtUtils jwtUtils;
+
 
     @Value("${jwt.cookieName}")
     private String jwtCookiesName;
@@ -42,72 +46,39 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         logger.info("logger servlet path::{}", request.getServletPath());
 
-
-        if (FilterHelper.filterUrlContains(request)) {
+        if (request.getServletPath().contains("/api/v1/auth/login") || request.getServletPath().contains("/api/v1/auth/logout")) {
             filterChain.doFilter(request, response);
-            logger.info("passed JwtAuthenticationFilter");
-            return;
-        }
-
-        String token = null;
-        String username = null;
-
-        if (request.getCookies() != null) {
-            for (Cookie cookie : request.getCookies()) {
-                if (cookie.getName().equals(jwtCookiesName)) {
-                    token = cookie.getValue();
-                }
-            }
-        }
-
-        if (token == null) {
-            filterChain.doFilter(request, response);
+            logger.info(":::This endpoints will not be filtered:::");
+            logger.info("{}... {}", request.getServletPath(), request.getRequestURI());
             return;
         }
 
 
-        username = jwtService.extractUserName(token);
-
-        if (username != null) {
-            UserDetails userDetails = userService.loadUserByUsername(username);
-            logger.info("Authorities:{}", userDetails.getAuthorities());
-            if (jwtService.isTokenValid(token, userDetails)) {
-
+        final String authHeader = request.getHeader("Authorization");
+        final String jwt;
+        final String userEmail;
+        if (StringUtils.isEmpty(authHeader) || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        jwt = authHeader.substring(7);
+        userEmail = jwtUtils.extractSubject(jwt);
+        if (StringUtils.isNotEmpty(userEmail)
+                && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = userService
+                    .loadUserByUsername(userEmail);
+            if (jwtUtils.isValidToken(jwt, userDetails)) {
                 SecurityContext context = SecurityContextHolder.createEmptyContext();
-                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                context.setAuthentication(authenticationToken);
-                SecurityContextHolder.setContext(context);  // <-- Add this line to set the SecurityContextHolder
-
-                logger.info("User {}, role, {}, is trying to access {}", userDetails.getUsername(), userDetails.getAuthorities(), request.getRequestURI());
-
-
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                        userDetails, null, userDetails.getAuthorities());
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                context.setAuthentication(authToken);
+                SecurityContextHolder.setContext(context);
             }
         }
 
-
-//        final String authHeader = request.getHeader("Authorization");
-//        final String jwt;
-//        final String userEmail;
-//        if (StringUtils.isEmpty(authHeader) || !authHeader.startsWith("Bearer ")) {
-//            filterChain.doFilter(request, response);
-//            return;
-//        }
-//        jwt = authHeader.substring(7);
-//        userEmail = jwtService.extractUserName(jwt);
-//        if (StringUtils.isNotEmpty(userEmail)
-//                && SecurityContextHolder.getContext().getAuthentication() == null) {
-//            UserDetails userDetails = userService
-//                    .loadUserByUsername(userEmail);
-//            if (jwtService.isTokenValid(jwt, userDetails)) {
-//                SecurityContext context = SecurityContextHolder.createEmptyContext();
-//                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-//                        userDetails, null, userDetails.getAuthorities());
-//                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-//                context.setAuthentication(authToken);
-//                SecurityContextHolder.setContext(context);
-//            }
-//        }
+        SecurityContext context = SecurityContextHolder.getContext();
+        logger.info(":::Authenticated Object:::{}", context.getAuthentication());
 
 
         filterChain.doFilter(request, response);

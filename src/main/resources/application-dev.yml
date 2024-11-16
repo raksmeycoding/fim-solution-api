@@ -8,10 +8,13 @@ spring:
   #        max-size: 8                 # Maximum number of threads
   #        queue-capacity: 50          # Size of the queue for waiting tasks
   #        keep-alive: 60              # Keep idle threads for 60 seconds before terminating
+  h2:
+    console:
+      enabled: true
   datasource:
-    url: jdbc:postgresql://localhost:5432/fimguide
+    url: jdbc:h2:mem:testDb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE;MODE=PostgreSQL;
     username: root
-    password: root
+    password:
     hikari:
       maximum-pool-size: 4           # Limited to match CPU core capacity
       minimum-idle: 8                # Maintain a few idle connections
@@ -22,6 +25,8 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
+    database-platform: org.hibernate.dialect.H2Dialect
+    defer-datasource-initialization: false
     properties:
       hibernate:
         use_sql_comments: true
@@ -31,7 +36,25 @@ spring:
         generate_statistics: false
         order_inserts: true
         order_updates: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.H2Dialect
+  flyway:
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    baseline-version: 1
+    enabled: false
+    locations:
+      - db/migration/dev
+    user: root
+    password: root
+  sql:
+    init:
+      mode: NEVER
+
+
+springdoc:
+  swagger-ui:
+    csrf:
+      enabled: true
 
 
 

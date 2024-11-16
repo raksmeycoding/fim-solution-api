@@ -2,6 +2,7 @@ package com.fimsolution.group.app.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fimsolution.group.app.dto.GenericDto;
+import com.fimsolution.group.app.dto.RespondDto;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,6 +24,6 @@ public class FimAuthenticationEntrypoint implements AuthenticationEntryPoint {
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException {
         response.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        MAPPER.writeValue(response.getOutputStream(), GenericDto.<String>builder().message(HttpStatus.UNAUTHORIZED.name()).build());
+        MAPPER.writeValue(response.getOutputStream(), RespondDto.<String>builder().data("1").message(HttpStatus.UNAUTHORIZED.name()).build());
     }
 }

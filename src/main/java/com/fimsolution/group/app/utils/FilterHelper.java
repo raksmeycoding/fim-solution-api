@@ -17,7 +17,11 @@ public class FilterHelper {
             "/api/v1/auth/register",
             "/api/v1/auth/refreshToken",
             "/api/v1/auth/logout",
-            "/api/v1/user/noAuthUserProfile"
+            "/api/v1/user/noAuthUserProfile",
+            "/h2-console",
+            "/api/v1/users",
+            "/api/v1/auth/csrf"
+
     );
 
     public static boolean filterUrlContains(HttpServletRequest httpServletRequest) {

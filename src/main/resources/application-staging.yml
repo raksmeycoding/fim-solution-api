@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: FIM-SOLUTION-APPLICATION
+  #  task:
+  #    execution:
+  #      pool:
+  #        core-size: 4                # Number of core threads
+  #        max-size: 8                 # Maximum number of threads
+  #        queue-capacity: 50          # Size of the queue for waiting tasks
+  #        keep-alive: 60              # Keep idle threads for 60 seconds before terminating
+  h2:
+    console:
+      enabled: true
+  datasource:
+#    url: jdbc:postgresql://localhost:5432/fimDbTest
+    url: jdbc:h2:mem:testDb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE;MODE=PostgreSQL;
+    username: root
+    password:
+    driverClassName: org.h2.Driver
+    hikari:
+      maximum-pool-size: 4           # Limited to match CPU core capacity
+      minimum-idle: 8                # Maintain a few idle connections
+      idle-timeout: 60000            # 60 seconds before idle connections are closed
+      connection-timeout: 60000      # 60 seconds timeout for obtaining a connection
+      max-lifetime: 1800000          # 30 minutes maximum lifetime of a connection
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    database-platform: org.hibernate.dialect.H2Dialect
+#    defer-datasource-initialization: false
+    properties:
+      hibernate:
+        use_sql_comments: true
+        jdbc:
+          batch_size: 100
+        format_sql: true
+        generate_statistics: false
+        order_inserts: true
+        order_updates: true
+        dialect: org.hibernate.dialect.H2Dialect
+  flyway:
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    baseline-version: 1
+    enabled: false
+    locations:
+      - db/migration
+    user: root
+    password:
+  sql:
+    init:
+      mode: NEVER
+
+
+
+

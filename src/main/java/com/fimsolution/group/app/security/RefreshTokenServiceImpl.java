@@ -2,7 +2,7 @@ package com.fimsolution.group.app.security;
 
 
 import com.fimsolution.group.app.model.security.RefreshToken;
-import com.fimsolution.group.app.model.security.UserCredentials;
+import com.fimsolution.group.app.model.security.UserCredential;
 import com.fimsolution.group.app.repository.RefreshTokenRepository;
 import com.fimsolution.group.app.repository.UserCredentialRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -33,44 +34,43 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     }
 
 
+    @Transactional
     public RefreshToken createRefreshToken(String username) {
-        RefreshToken refreshToken = new RefreshToken();
+        RefreshToken newRefreshToken = new RefreshToken();
 
-        UserCredentials userCredentials = userCredentialRepository
+        UserCredential userCredential = userCredentialRepository
                 .findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User has not been found"));
 
 
-        // Will the delete the old refresh token if user found!
-        refreshTokenRepository.findByUserCredentials(userCredentials)
-                .ifPresent(reFr -> {
-                    logger.info("Found Remaining refreshToken::{}", reFr);
-                    refreshTokenRepository.deleteById(reFr.getId());
-                });
+        Optional<RefreshToken> refreshTokenOptional = refreshTokenRepository.findByUserCredentialId(userCredential.getId());
 
-        refreshToken.setUserCredentials(userCredentials);
 
-        refreshToken.setExpiryDate(Instant.now().plusMillis(jwtCookieRefreshExpiration));
-        refreshToken.setToken(UUID.randomUUID().toString());
+        refreshTokenOptional.ifPresent(refreshToken -> refreshTokenRepository.deleteByToken(refreshToken.getToken()));
 
-        refreshToken = refreshTokenRepository.save(refreshToken);
-        return refreshToken;
+
+//        newRefreshToken.setExpiryDate(Instant.now().plusMillis(jwtCookieRefreshExpiration));
+        newRefreshToken.setToken(UUID.randomUUID().toString());
+        newRefreshToken.setUserCredential(userCredential);
+
+        return refreshTokenRepository.save(newRefreshToken);
     }
 
 
+    @Transactional
     public RefreshToken verifyRefreshToken(RefreshToken refreshToken) {
-        if (refreshToken.getExpiryDate().compareTo(Instant.now()) < 0) {
-            refreshTokenRepository.delete(refreshToken);
-            throw new RuntimeException(refreshToken.getToken() + " has been expired. Please make a new sing in request!");
-        }
+//        if (refreshToken.getExpiryDate().compareTo(Instant.now()) < 0) {
+//            refreshTokenRepository.delete(refreshToken);
+//            throw new RuntimeException(refreshToken.getToken() + " has been expired. Please make a new sing in request!");
+//        }
         return refreshToken;
     }
 
 
     @Transactional
-    public void deleteByUserId(UUID userCredentialId) {
+    public void deleteByUserId(String userCredentialId) {
         refreshTokenRepository
-                .deleteByUserCredentials(userCredentialRepository.findById(userCredentialId)
+                .deleteByUserCredential(userCredentialRepository.findById(userCredentialId)
                         .orElseThrow(() -> new RuntimeException("Unable to delete refresh token by userCredential")));
     }
 }

@@ -1,5 +1,7 @@
 package com.fimsolution.group.app.model.security;
 
+import com.fimsolution.group.app.repository.RoleRepository;
+import com.fimsolution.group.app.repository.UserRoleRepository;
 import lombok.Builder;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
@@ -7,7 +9,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 
@@ -16,7 +17,7 @@ import java.util.stream.Collectors;
 public class UserDetailsImpl implements UserDetails {
 
 
-    private UUID id;
+    private String id;
     private final String username;
     private final String password;
 
@@ -28,6 +29,11 @@ public class UserDetailsImpl implements UserDetails {
     private boolean accountNonLocked;
     private final Collection<? extends GrantedAuthority> authorities;
 
+    private final RoleRepository roleRepository;
+
+    private static UserRoleRepository userRoleRepository;
+
+
 //    public UserDetailsImpl(UUID id, String username, String password,
 //                           Collection<? extends GrantedAuthority> authorities) {
 //        this.id = id;
@@ -37,26 +43,22 @@ public class UserDetailsImpl implements UserDetails {
 //    }
 
 
-    public static UserDetailsImpl buildUserCredentials(UserCredentials user) {
-        Collection<GrantedAuthority> authorities = user.getRoles().stream()
-                .map(userRole -> new SimpleGrantedAuthority(userRole.getName().toUpperCase()))
+    public static UserDetailsImpl buildUserCredentials(UserCredential userCredential) {
+
+        Collection<GrantedAuthority> authorities = userCredential.getUserRole().stream()
+                .map(usersRole -> new SimpleGrantedAuthority(usersRole.getRole().getName().toUpperCase()))
                 .collect(Collectors.toList());
 
-//        return new UserDetailsImpl(
-//                user.getId(),
-//                user.getUsername(),
-//                user.getPassword(),
-//                authorities);
 
         return UserDetailsImpl.builder()
-                .id(user.getId())
-                .username(user.getUsername())
+                .id(userCredential.getId())
+                .username(userCredential.getUsername())
                 .authorities(authorities)
-                .password(user.getPassword())
-                .accountNonExpired(user.isAccountNonExpired())
-                .accountNonLocked(user.isAccountNonLocked())
-                .credentialsNonExpired(user.isCredentialsNonExpired())
-                .enabled(user.isEnabled())
+                .password(userCredential.getPassword())
+                .accountNonExpired(userCredential.isAccountNonExpired())
+                .accountNonLocked(userCredential.isAccountNonLocked())
+                .credentialsNonExpired(userCredential.isCredentialsNonExpired())
+                .enabled(userCredential.isEnabled())
                 .build();
     }
 

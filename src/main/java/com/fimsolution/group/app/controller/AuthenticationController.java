@@ -1,26 +1,39 @@
 package com.fimsolution.group.app.controller;
 
 import com.fimsolution.group.app.dto.GenericDto;
+import com.fimsolution.group.app.dto.RequestDto;
+import com.fimsolution.group.app.dto.RespondDto;
 import com.fimsolution.group.app.dto.auth.RegisterRequest;
 import com.fimsolution.group.app.dto.auth.ResponseUserInfo;
+import com.fimsolution.group.app.dto.auth.RoleResDto;
 import com.fimsolution.group.app.dto.auth.UserLoginRequest;
+import com.fimsolution.group.app.dto.business.f2f.user.UserResDto;
+import com.fimsolution.group.app.exception.NotFoundException;
 import com.fimsolution.group.app.model.security.RefreshToken;
-import com.fimsolution.group.app.model.security.UserCredentials;
+import com.fimsolution.group.app.model.security.UserCredential;
 import com.fimsolution.group.app.model.security.UserDetailsImpl;
 import com.fimsolution.group.app.repository.RefreshTokenRepository;
 import com.fimsolution.group.app.repository.UserCredentialRepository;
+import com.fimsolution.group.app.repository.f2f.LoanUsersRepository;
 import com.fimsolution.group.app.security.JwtServiceImpl;
 import com.fimsolution.group.app.security.RefreshTokenServiceImpl;
 import com.fimsolution.group.app.service.AuthenticationService;
 import com.fimsolution.group.app.utils.CookieUtils;
+import com.fimsolution.group.app.utils.JwtUtils;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -30,18 +43,17 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.WebUtils;
 
+import java.security.Principal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -54,8 +66,20 @@ public class AuthenticationController {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtServiceImpl jwtServiceImpl;
     private final AuthenticationManager authenticationManager;
+    private final LoanUsersRepository loanUsersRepository;
     private final UserCredentialRepository userCredentialRepository;
     private final Environment environment;
+    private final JwtUtils jwtUtils;
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    private final HttpServletResponse httpServletResponse;
+
+    @Value("${jwt.cookieName}")
+    private String jwtCookieName;
+
+    @Value("${jwt.refreshCookieName}")
+    private String jwtRefreshCookieName;
     private final static Logger logger = LoggerFactory.getLogger(AuthenticationController.class);
 
     @PostMapping("/register")
@@ -63,12 +87,14 @@ public class AuthenticationController {
             summary = "User registration",
             description = "registration endpoint.",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Operation Completed Successfully")
+                    @ApiResponse(responseCode = "201", description = "Operation Completed Successfully")
             }
     )
-    public ResponseEntity<?> register(@Valid @RequestBody  GenericDto<RegisterRequest> requestDto) {
+    public ResponseEntity<RespondDto<String>> register(@Valid @RequestBody RequestDto<RegisterRequest> requestDto) {
 
-        return ResponseEntity.ok(authenticationServiceImpl.register(requestDto));
+//        logger.info(":::Log Security Object:::{}", authentication);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(authenticationServiceImpl.register(requestDto));
     }
 
 
@@ -80,8 +106,9 @@ public class AuthenticationController {
             }
     )
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody GenericDto<UserLoginRequest> request) {
-        UserLoginRequest userLoginRequest = request.getData();
+    @Transactional
+    public ResponseEntity<RespondDto<ResponseUserInfo>> login(@RequestBody @Valid RequestDto<UserLoginRequest> request) {
+        UserLoginRequest userLoginRequest = request.getRequest();
 
 
         Authentication authentication = authenticationManager
@@ -91,28 +118,60 @@ public class AuthenticationController {
 
         UserDetailsImpl userDetailsImpl = (UserDetailsImpl) authentication.getPrincipal();
 
-        ResponseCookie jwtCookie = jwtServiceImpl.genJwtCookie(userDetailsImpl);
+        Optional<UserCredential> credentialOptional = userCredentialRepository.findByUsername(userDetailsImpl.getUsername());
+
+        if (credentialOptional.isEmpty())
+            throw new NotFoundException("No login user not found");
+
+        String accessToken = jwtUtils.generateJwtToken(userDetailsImpl);
+        String refreshToken = jwtUtils.generateRefreshToken(userDetailsImpl);
+
+//        ResponseCookie jwtCookie = jwtServiceImpl.genJwtCookie(userDetailsImpl);
+
+        ResponseCookie jwtCookies = ResponseCookie.fromClientResponse(jwtRefreshCookieName, refreshToken)
+                .path("/")
+//                .maxAge(jwtCookieAccessExpiration)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .build();
 
 
         List<String> roles = userDetailsImpl.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .toList();
 
-        RefreshToken refreshToken = refreshTokenServiceImpl.createRefreshToken(userDetailsImpl.getUsername());
+
+        UserCredential userCredential = credentialOptional.get();
+
+        RefreshToken refreshTokenObject = new RefreshToken();
+
+        refreshTokenObject.setToken(refreshToken);
+
+        refreshTokenObject.setUserCredential(userCredential);
+
+        userCredential.setRefreshToken(refreshTokenObject);
+
+        userCredential = userCredentialRepository.save(userCredential);
 
 
-        ResponseCookie jwtRefreshToken = jwtServiceImpl.generateRefreshJwtCookie(refreshToken.getToken());
+        ResponseCookie jwtResKey = ResponseCookie
+                .fromClientResponse("__re_key", userCredential.getRefreshToken().getId())
+                .path("/")
+                .build();
 
 
         return ResponseEntity.ok()
                 .headers(httpHeaders -> {
-                    httpHeaders.add(HttpHeaders.SET_COOKIE, jwtCookie.toString());
-                    httpHeaders.add(HttpHeaders.SET_COOKIE, jwtRefreshToken.toString());
+                    httpHeaders.add(HttpHeaders.SET_COOKIE, jwtCookies.toString());
+                    httpHeaders.add(HttpHeaders.SET_COOKIE, jwtResKey.toString());
                 })
-                .body(GenericDto.<ResponseUserInfo>builder()
-                        .code("200")
+                .body(RespondDto.<ResponseUserInfo>builder()
+                        .httpStatusCode(HttpStatus.CREATED.value())
+                        .httpStatusName(HttpStatus.CREATED)
                         .data(ResponseUserInfo.builder()
                                 .email(userDetailsImpl.getUsername())
+                                .token(accessToken)
                                 .roles(roles).build())
                         .message("Operation Completed Successfully")
                         .build());
@@ -129,54 +188,57 @@ public class AuthenticationController {
     @PostMapping("/logout")
     @Transactional
     public ResponseEntity<?> logoutUser(HttpServletRequest httpServletRequest) {
+        try {
+            // 1. Clear Security Context
+            SecurityContextHolder.clearContext();
 
-        // Use Stream to find the "jwt __fim_rf_id" cookie
-        Optional<String> jwtFimRfId = Arrays.stream(httpServletRequest.getCookies())
-                .filter(cookie -> "__fim_rf_id" .equals(cookie.getName()))
-                .map(Cookie::getValue)
-                .findFirst();
+            // 2. Read refresh token from cookies
 
-        // Log the extracted cookie value or warn if not found
-        jwtFimRfId.ifPresentOrElse(
-
-                value -> {
-                    logger.info("Extracted jwt __fim_rf_id cookie: {}", value);
-                    Optional<RefreshToken> optionalRefreshToken = refreshTokenRepository.findByToken(value);
-                    optionalRefreshToken.ifPresent(refreshToken -> {
-                        logger.info("found db refresh token:{}", refreshToken);
-                        refreshTokenRepository.deleteById(refreshToken.getId());
-                    });
+            Optional<String> refreshTokenOptional = CookieUtils.readCookie("__fim_rf_id", httpServletRequest);
+            Optional<String> refreshTokenIdOptional = CookieUtils.readCookie("__re_key", httpServletRequest);
 
 
-                },
-
-                () -> logger.warn("jwt __fim_rf_id cookie not found.")
-        );
-
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication != null && !(authentication.getPrincipal() instanceof String
-                && "anonymousUser" .equals(authentication.getPrincipal()))) {
-            try {
-                UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-                UUID userId = userDetails.getId();
-                refreshTokenServiceImpl.deleteByUserId(userId);
-                logger.info("Successfully deleted refresh tokens for user with ID: {}", userId);
-            } catch (Exception e) {
-                logger.error("Error occurred while deleting refresh tokens: ", e);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(GenericDto.<String>builder().message("Logout failed!").build());
+            if (refreshTokenOptional.isEmpty() || refreshTokenIdOptional.isEmpty()) {
+                // If no valid refresh token or refresh token ID in cookies, simply return an unauthorized status.
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
             }
+
+            String refreshToken = refreshTokenOptional.get();
+            String refreshTokenId = refreshTokenIdOptional.get();
+
+            // 3. Invalidate refresh token if it's stored in a database
+            Optional<RefreshToken> refreshTokenOptionalDb = refreshTokenRepository.findById(refreshTokenId);
+
+            // You can either delete the refresh token from the database or mark it as invalid
+            refreshTokenOptionalDb.ifPresent(refreshTokenRepository::delete);
+
+            // 4. Clear cookies by setting them to expired (removing sensitive tokens)
+            ResponseCookie clearRefreshTokenCookie = ResponseCookie.fromClientResponse("__fim_rf_id", "")
+                    .httpOnly(true)
+                    .secure(true)
+                    .sameSite("Strict")
+                    .path("/")
+                    .maxAge(0) // This makes the cookie expire immediately
+                    .build();
+
+            ResponseCookie clearRefreshTokenIdCookie = ResponseCookie.fromClientResponse("__re_key", "")
+                    .httpOnly(true)
+                    .secure(true)
+                    .sameSite("Strict")
+                    .path("/")
+                    .maxAge(0) // Expire the refresh token ID cookie as well
+                    .build();
+
+
+            // 5. Return success response
+            return ResponseEntity.ok().headers(httpHeaders -> {
+                httpHeaders.add(HttpHeaders.SET_COOKIE, clearRefreshTokenCookie.toString());
+                httpHeaders.add(HttpHeaders.SET_COOKIE, clearRefreshTokenIdCookie.toString());
+            }).build();
+        } catch (Exception e) {
+            logger.info(":::Log Security Object:::{}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
-
-        ResponseCookie jwtCookie = jwtServiceImpl.getCleanJwtCookie();
-        ResponseCookie jwtRefreshCookie = jwtServiceImpl.getCleanJwtRefreshCookie();
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
-                .header(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString())
-                .body(GenericDto.<String>builder().message("You've been signed out!").build());
     }
 
 
@@ -188,34 +250,113 @@ public class AuthenticationController {
             }
     )
     @PostMapping("/refreshToken")
-    public ResponseEntity<?> refreshToken(HttpServletRequest httpServletRequest) {
+    @Transactional
+    public ResponseEntity<RespondDto<ResponseUserInfo>> refreshToken(HttpServletRequest httpServletRequest) {
 
-        Optional<String> optionalRefreshToken = jwtServiceImpl.getJwtRefreshFromCookieOptional(httpServletRequest);
+        Optional<String> refreshCookieOptional = CookieUtils.readCookie("__fim_rf_id", httpServletRequest);
+        Optional<String> cookieIdOptional = CookieUtils.readCookie("__re_key", httpServletRequest);
 
-        if (optionalRefreshToken.isPresent()) {
-            return refreshTokenServiceImpl.findByRefreshToken(optionalRefreshToken.get())
-                    .map(refreshTokenServiceImpl::verifyRefreshToken)
-                    .map(RefreshToken::getUserCredentials)
-                    .map(userCredentials -> {
+        if (refreshCookieOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
 
-                        // jwt cookies
-                        ResponseCookie responseCookie = jwtServiceImpl.generateJwtCookie(UserDetailsImpl.buildUserCredentials(userCredentials));
-
-                        RefreshToken refreshToken = refreshTokenServiceImpl.createRefreshToken(userCredentials.getUsername());
-
-                        ResponseCookie freshCookiesResponse = jwtServiceImpl.generateRefreshJwtCookie(refreshToken.getToken());
-
-
-                        return ResponseEntity.ok()
-                                .header(HttpHeaders.SET_COOKIE, responseCookie.toString())
-                                .header(HttpHeaders.SET_COOKIE, freshCookiesResponse.toString())
-                                .body(GenericDto.builder().build());
-                    })
-                    .orElseThrow(() -> new RuntimeException("Refresh token is not found in our database"));
         }
 
-        return ResponseEntity.badRequest().body(GenericDto.builder().message("Refresh Token must be not empty!").build());
+        if (cookieIdOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        String refreshTokenCookies = refreshCookieOptional.get();
+        String refreshTokenId = cookieIdOptional.get();
+
+        // Fetch the refresh token from DB
+        Optional<RefreshToken> refreshTokenOptional = refreshTokenRepository.findById(refreshTokenId);
+        if (refreshTokenOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        RefreshToken refreshTokenFromDb = refreshTokenOptional.get();
+        UserCredential userCredentialFromDb = refreshTokenFromDb.getUserCredential();
+
+        // Remove the refresh token (set null), persist changes
+//        userCredentialFromDb.setRefreshToken(null);
+        UserCredential savedUserCredential = userCredentialRepository.save(userCredentialFromDb); // Save user credential after token removal
+
+
+
+        // Generate new access token and refresh token
+        UserDetailsImpl userDetails = UserDetailsImpl.buildUserCredentials(savedUserCredential);
+        String genAccessToken = jwtUtils.generateJwtToken(userDetails);
+        String genRefreshToken = jwtUtils.generateRefreshToken(userDetails);
+
+        // Create a new RefreshToken entity
+        RefreshToken newRefreshToken = new RefreshToken();
+        newRefreshToken.setToken(genRefreshToken);
+        newRefreshToken.setUserCredential(userCredentialFromDb);
+
+        // Associate the new refresh token with the user credential and save
+        savedUserCredential.setRefreshToken(newRefreshToken);
+        UserCredential userDetailsWithNewRefresh = userCredentialRepository.save(savedUserCredential); // Save updated user credential with new token
+
+        // Create cookies for response
+        RefreshToken savedRefreshToken = userDetailsWithNewRefresh.getRefreshToken();
+
+        ResponseCookie refreshTokenCookiesWithId = ResponseCookie.fromClientResponse("__re_key", savedRefreshToken.getId())
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/")
+                .build();
+
+        ResponseCookie refreshCookies = ResponseCookie.fromClientResponse("__fim_rf_id", genRefreshToken)
+                .httpOnly(true)
+                .sameSite("Strict")
+                .path("/")
+                .secure(true)
+                .build();
+
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookiesWithId.toString())
+                .header(HttpHeaders.SET_COOKIE, refreshCookies.toString())
+                .body(RespondDto.<ResponseUserInfo>builder()
+                        .data(ResponseUserInfo.builder()
+                                .email(savedUserCredential.getUsername())
+                                .token(genAccessToken)
+                                .build())
+                        .build());
     }
+
+//
+//    @GetMapping("/verify-authority")
+//    public ResponseEntity<RespondDto<RoleResDto>> verifyAuthority() {
+//
+//        SecurityContext context = SecurityContextHolder.getContext();
+//
+//        logger.info(":::TTTT:::{}", context.getAuthentication());
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        logger.info("erify-authority{}", authentication);
+//        Principal principal = (Principal) authentication.getPrincipal();
+
+//        if (principal == null) {
+//            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+//        }
+
+//        logger.info("auitho:::{}", principal);
+
+//        List<String> roles = principal.get().stream().map(GrantedAuthority::getAuthority).toList();
+//        logger.info("Roles: {}", roles);
+//        RoleResDto roleResDto = new RoleResDto();
+//        roleResDto.setRoles(roles);
+//        logger.info("TESTTEST");
+//
+//
+//        return ResponseEntity.status(HttpStatus.OK)
+//                .body(RespondDto.<RoleResDto>builder()
+//                        .data(null)
+//                        .build());
+//
+//
+//    }
 
 
 }

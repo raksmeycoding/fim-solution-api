@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -14,6 +16,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,6 +24,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -45,16 +49,59 @@ public class SecurityConfig {
 
         httpSecurity
 //                .csrf(csrf -> {
-//                    csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse());
+//
+//                    CookieCsrfTokenRepository repository = new CookieCsrfTokenRepository();
+//                    repository.setCookieCustomizer(responseCookieBuilder -> {
+//                        responseCookieBuilder.httpOnly(true);
+//                        responseCookieBuilder.secure(true);
+//                        responseCookieBuilder.path("/");
+//                        responseCookieBuilder.sameSite("Strict");
+//                        responseCookieBuilder.maxAge(900);
+//
+//                    });
 //                })
+//
+//
+//                    csrf
+//                            .csrfTokenRepository(repository)
+//                            .ignoringRequestMatchers("/h2-console/**");
+//
+//                })
+//                .csrf(csrf -> {
+//                    csrf.csrfTokenRepository(new HttpSessionCsrfTokenRepository());
+//                })
+//                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
                 .csrf(AbstractHttpConfigurer::disable)
+//                .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository()))
+
+                .headers(header -> {
+                    header.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin);
+                })
+//                .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> {
-                    auth.requestMatchers(WhiteListEndpoint.WHITE_LIST_ENDPOINTS).permitAll();
-                    auth.requestMatchers("/api/v1/test/hello").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN");
+                    auth.requestMatchers(
+                            "/v3/api-docs/**",
+                            "/swagger-ui.html",
+                            "/swagger-ui/**",
+                            "/webjars/**",
+                            "/h2-console/**",
+                            "/favicon.ico").permitAll();
+                    auth.requestMatchers("/health").permitAll();
+                    auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
+                    auth.requestMatchers("/static/**").permitAll();
+                    auth.requestMatchers("/api/v1/test/hello").permitAll();
+                    auth.requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf").permitAll();
+                    auth.requestMatchers("/api/v1/users").authenticated();
                     auth.requestMatchers("/api/v1/user/noAuthUserProfile").permitAll();
+                    auth.requestMatchers("/api/v1/auth/**").permitAll();
+                    auth.requestMatchers("/actuator/**").hasAnyRole("ADMIN");
+                    auth.requestMatchers("/schedule/amount-due").hasAnyRole("USER", "ADMIN");
+                    auth.requestMatchers("/api/v1/auth/login/**").permitAll();
                     auth.anyRequest().authenticated();
+
+
                 })
 //                .anonymous(anonymous -> {
 //                    anonymous
@@ -83,6 +130,13 @@ public class SecurityConfig {
 
     }
 
+    @Bean
+    public CsrfTokenRepository csrfTokenRepository() {
+        HttpSessionCsrfTokenRepository repository = new HttpSessionCsrfTokenRepository();
+        repository.setHeaderName("X-CSRF-TOKEN");
+        return repository;
+    }
+
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -106,13 +160,39 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:8082"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token"));
-        configuration.setAllowedHeaders(List.of("*"));
-//        configuration.addAllowedHeader("*");
+
+        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
+
         configuration.setAllowCredentials(true);
+
+        Long MAX_AGE = 3600L;
+
+//        configuration.setAllowedHeaders(Arrays.asList("Origin", "Access-Control-Allow-Origin", "Content-Type",
+//                "Accept", "Authorization", "X-Requested-With",
+//                "Access-Control-Request-Method", "Access-Control-Request-Headers", "Access-Control-Allow-Headers"));
+
+//        configuration.setExposedHeaders(Arrays.asList("Origin", "Content-Type", "Accept",
+//                "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Access-Control-Allow-Credentials"));
+        configuration.setAllowedHeaders(Arrays.asList(
+                HttpHeaders.AUTHORIZATION,
+                HttpHeaders.CONTENT_TYPE,
+                HttpHeaders.ACCEPT,
+                "X-XSRF-TOKEN"
+        ));
+
+        configuration.setAllowedMethods(Arrays.asList(
+                        HttpMethod.GET.name(),
+                        HttpMethod.PUT.name(),
+                        HttpMethod.POST.name(),
+                        HttpMethod.OPTIONS.name(),
+                        HttpMethod.DELETE.name()
+                )
+        );
+
+        configuration.setMaxAge(MAX_AGE);
+
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

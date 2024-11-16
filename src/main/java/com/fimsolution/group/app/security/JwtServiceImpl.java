@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.WebUtils;
@@ -69,23 +70,46 @@ public class JwtServiceImpl implements JwtService {
     }
 
     private String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+        Instant instant = Instant.now();
         return Jwts.builder()
                 .setClaims(extraClaims)
-                .setSubject(userDetails.getUsername())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 24))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256).compact();
+                .setIssuedAt(Date.from(instant))
+                .setExpiration(Date.from(instant.plus(30, ChronoUnit.DAYS)))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+//        return Jwts.builder()
+//                .setClaims(extraClaims)
+//                .setSubject(userDetails.getUsername())
+//                .setIssuedAt(new Date(System.currentTimeMillis()))
+//                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 24))
+//                .signWith(getSigningKey(), SignatureAlgorithm.HS256).compact();
     }
 
-    private String genJwtFromUser(String username) {
+    public String genJwtFromUser(String username) {
         Instant instant = Instant.now();
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(Date.from(instant))
-                .setExpiration(Date.from(instant.plus(10, ChronoUnit.MINUTES)))
+                .setExpiration(Date.from(instant.plus(30, ChronoUnit.DAYS)))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
+
+
+    public String generateRefreshToken(Authentication authentication) {
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        return Jwts.builder()
+                .setSubject(userDetails.getUsername())
+                .setIssuedAt(Date.from(Instant.now()))
+                .setExpiration(Date.from(Instant.now().plus(30, ChronoUnit.DAYS)))
+                .signWith(SignatureAlgorithm.HS512, getSigningKey())
+                .compact();
+    }
+
+//    public String extractUsername(String token) {
+//        Claims claims = Jwts.parser().setSigningKey(getSigningKey()).parseClaimsJws(token).getBody();
+//        return claims.getSubject();
+//    }
 
 
     private ResponseCookie genCookie(String name, String value) {
