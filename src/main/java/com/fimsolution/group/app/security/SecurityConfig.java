@@ -98,7 +98,6 @@ public class SecurityConfig {
                     auth.requestMatchers("/api/v1/auth/**").permitAll();
                     auth.requestMatchers("/actuator/**").hasAnyRole("ADMIN");
                     auth.requestMatchers("/schedule/amount-due").hasAnyRole("USER", "ADMIN");
-                    auth.requestMatchers("/api/v1/auth/login/**").permitAll();
                     auth.anyRequest().authenticated();
 
 

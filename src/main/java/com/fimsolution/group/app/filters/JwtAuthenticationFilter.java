@@ -46,7 +46,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         logger.info("logger servlet path::{}", request.getServletPath());
 
-        if (request.getServletPath().contains("/api/v1/auth/login") || request.getServletPath().contains("/api/v1/auth/logout")) {
+        if (
+                request.getServletPath().contains("/api/v1/auth/login")
+                        || request.getServletPath().contains("/api/v1/auth/logout")
+                        || request.getServletPath().contains("/api/v1/auth/refreshToken")
+                        || request.getServletPath().contains("/api/v1/auth/register")
+        ) {
             filterChain.doFilter(request, response);
             logger.info(":::This endpoints will not be filtered:::");
             logger.info("{}... {}", request.getServletPath(), request.getRequestURI());

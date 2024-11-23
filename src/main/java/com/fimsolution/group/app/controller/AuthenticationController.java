@@ -53,6 +53,7 @@ import org.springframework.web.util.WebUtils;
 import java.security.Principal;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -258,7 +259,6 @@ public class AuthenticationController {
 
         if (refreshCookieOptional.isEmpty()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-
         }
 
         if (cookieIdOptional.isEmpty()) {
@@ -271,7 +271,29 @@ public class AuthenticationController {
         // Fetch the refresh token from DB
         Optional<RefreshToken> refreshTokenOptional = refreshTokenRepository.findById(refreshTokenId);
         if (refreshTokenOptional.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+
+            // 4. Clear cookies by setting them to expired (removing sensitive tokens)
+            ResponseCookie clearRefreshTokenCookie = ResponseCookie.fromClientResponse("__fim_rf_id", "")
+                    .httpOnly(true)
+                    .secure(true)
+                    .sameSite("Strict")
+                    .path("/")
+                    .maxAge(0) // This makes the cookie expire immediately
+                    .build();
+
+            ResponseCookie clearRefreshTokenIdCookie = ResponseCookie.fromClientResponse("__re_key", "")
+                    .httpOnly(true)
+                    .secure(true)
+                    .sameSite("Strict")
+                    .path("/")
+                    .maxAge(0) // Expire the refresh token ID cookie as well
+                    .build();
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).headers(httpHeaders -> {
+                        httpHeaders.add(HttpHeaders.SET_COOKIE, clearRefreshTokenCookie.toString());
+                        httpHeaders.add(HttpHeaders.SET_COOKIE, clearRefreshTokenIdCookie.toString());
+                    })
+                    .build();
         }
 
         RefreshToken refreshTokenFromDb = refreshTokenOptional.get();
@@ -280,7 +302,6 @@ public class AuthenticationController {
         // Remove the refresh token (set null), persist changes
 //        userCredentialFromDb.setRefreshToken(null);
         UserCredential savedUserCredential = userCredentialRepository.save(userCredentialFromDb); // Save user credential after token removal
-
 
 
         // Generate new access token and refresh token
@@ -325,38 +346,6 @@ public class AuthenticationController {
                                 .build())
                         .build());
     }
-
-//
-//    @GetMapping("/verify-authority")
-//    public ResponseEntity<RespondDto<RoleResDto>> verifyAuthority() {
-//
-//        SecurityContext context = SecurityContextHolder.getContext();
-//
-//        logger.info(":::TTTT:::{}", context.getAuthentication());
-//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-//        logger.info("erify-authority{}", authentication);
-//        Principal principal = (Principal) authentication.getPrincipal();
-
-//        if (principal == null) {
-//            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-//        }
-
-//        logger.info("auitho:::{}", principal);
-
-//        List<String> roles = principal.get().stream().map(GrantedAuthority::getAuthority).toList();
-//        logger.info("Roles: {}", roles);
-//        RoleResDto roleResDto = new RoleResDto();
-//        roleResDto.setRoles(roles);
-//        logger.info("TESTTEST");
-//
-//
-//        return ResponseEntity.status(HttpStatus.OK)
-//                .body(RespondDto.<RoleResDto>builder()
-//                        .data(null)
-//                        .build());
-//
-//
-//    }
 
 
 }
