@@ -5,6 +5,7 @@ import com.fimsolution.group.app.filters.JwtAuthenticationFilter;
 import com.fimsolution.group.app.utils.WhiteListEndpoint;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -42,6 +43,11 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final FimAccessDeniedHandler fimAccessDeniedHandler;
     private final FimAuthenticationEntrypoint fimAuthenticationEntrypoint;
+
+    @Value("${cors.allowedOrigins.origin1}")
+    private String origin1;
+    @Value("${cors.allowedOrigins.origin2}")
+    private String origin2;
 
 
     @Bean
@@ -162,7 +168,7 @@ public class SecurityConfig {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
+        configuration.setAllowedOrigins(List.of("http://localhost:3000", origin1, origin2));
 
         configuration.setAllowCredentials(true);
 

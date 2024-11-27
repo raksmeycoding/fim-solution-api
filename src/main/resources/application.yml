@@ -14,9 +14,9 @@ spring:
 logging:
   level:
     org:
-#      flywaydb: DEBUG
-#      hibernate:
-#        sql: DEBUG
+      #      flywaydb: DEBUG
+      #      hibernate:
+      #        sql: DEBUG
       springframework: INFO
     root: ${LOG_LEVEL:INFO}
   config: classpath:logback.xml
@@ -66,6 +66,10 @@ mailjet:
   apikey: ${MAILJET_API_KEY:fd63447152ab12ff8afcd23281c7f260}
   secret: ${MAILJET_SECRET:41c44df41ea75a24e046de853344df34}
 
+cors:
+  allowedOrigins:
+    origin1: ${FONT_ORIGIN_1:https://raksmey.me}
+    origin2: ${FONT_ORIGIN_2:https://www.raksmey.me}
 
 
 
