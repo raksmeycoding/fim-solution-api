@@ -49,6 +49,9 @@ public class SecurityConfig {
     @Value("${cors.allowedOrigins.origin2}")
     private String origin2;
 
+    @Value("${cors.allowedOrigins.originTest}")
+    private String originTest;
+
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
@@ -168,7 +171,7 @@ public class SecurityConfig {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", origin1, origin2));
+        configuration.setAllowedOrigins(List.of(originTest, origin1, origin2));
 
         configuration.setAllowCredentials(true);
 
