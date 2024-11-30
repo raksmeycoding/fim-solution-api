@@ -12,9 +12,9 @@ spring:
     console:
       enabled: true
   datasource:
-    url: jdbc:h2:mem:testDb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE;MODE=PostgreSQL;
-    username: root
-    password:
+    url: ${DATA_SOURCE:jdbc:h2:mem:dbDev;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE;MODE=PostgreSQL;}
+    username: ${DB_USER:root}
+    password: ${DB_USER:root}
     hikari:
       maximum-pool-size: 4           # Limited to match CPU core capacity
       minimum-idle: 8                # Maintain a few idle connections

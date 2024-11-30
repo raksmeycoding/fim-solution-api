@@ -68,7 +68,7 @@ mailjet:
 
 cors:
   allowedOrigins:
-    originTest: ${FRONT_TEST}
+    originTest: ${FRONT_TEST:http://localhost:3000}
     origin1: ${FONT_ORIGIN_1:https://raksmey.me}
     origin2: ${FONT_ORIGIN_2:https://www.raksmey.me}
 
