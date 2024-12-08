@@ -7,8 +7,6 @@ import com.fimsolution.group.app.dto.RespondDto;
 import com.fimsolution.group.app.dto.business.f2f.LoanDto;
 import com.fimsolution.group.app.dto.business.f2f.loan.LoanReqDto;
 import com.fimsolution.group.app.dto.business.f2f.loan.LoanResDto;
-import com.fimsolution.group.app.dto.business.f2f.loanuser.LoanUserReqDto;
-import com.fimsolution.group.app.dto.business.f2f.loanuser.LoanUserResDto;
 import com.fimsolution.group.app.mapper.business.f2f.LoanMapper;
 import com.fimsolution.group.app.model.business.f2f.Loan;
 import com.fimsolution.group.app.service.f2f.LoanService;
@@ -40,14 +38,14 @@ public class LoansController {
     }
 
     @GetMapping("/loan/{id}")
-    public ResponseEntity<GenericDto<?>> getLoanById(@PathVariable String id) {
+    public ResponseEntity<RespondDto<?>> getLoanById(@PathVariable String id) {
         Loan loan = loanService.getLoanById(id);
         if (loan == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(GenericDto.builder().code("404").message("Loan not found").build());
+                    .body(RespondDto.builder().data(null).errorMessage("Loan not found").httpStatusCode(404).build());
         }
-        LoanDto loanDto = LoanMapper.fromLoanEntityToLoanDto(loan);
-        return ResponseEntity.ok(GenericDto.<LoanDto>builder().code("200").message("Loan retrieved").data(loanDto).build());
+        LoanResDto loanResDto = LoanMapper.toResDto(loan);
+        return ResponseEntity.ok(RespondDto.<LoanResDto>builder().httpStatusCode(200).message("Loan retrieved").data(loanResDto).build());
     }
 
 

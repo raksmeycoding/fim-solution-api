@@ -238,7 +238,26 @@ public class AuthenticationController {
             }).build();
         } catch (Exception e) {
             logger.info(":::Log Security Object:::{}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            // 4. Clear cookies by setting them to expired (removing sensitive tokens)
+            ResponseCookie clearRefreshTokenCookie = ResponseCookie.fromClientResponse("__fim_rf_id", "")
+                    .httpOnly(true)
+                    .secure(true)
+                    .sameSite("Strict")
+                    .path("/")
+                    .maxAge(0) // This makes the cookie expire immediately
+                    .build();
+
+            ResponseCookie clearRefreshTokenIdCookie = ResponseCookie.fromClientResponse("__re_key", "")
+                    .httpOnly(true)
+                    .secure(true)
+                    .sameSite("Strict")
+                    .path("/")
+                    .maxAge(0) // Expire the refresh token ID cookie as well
+                    .build();
+            return ResponseEntity.ok().headers(httpHeaders -> {
+                httpHeaders.add(HttpHeaders.SET_COOKIE, clearRefreshTokenCookie.toString());
+                httpHeaders.add(HttpHeaders.SET_COOKIE, clearRefreshTokenIdCookie.toString());
+            }).build();
         }
     }
 

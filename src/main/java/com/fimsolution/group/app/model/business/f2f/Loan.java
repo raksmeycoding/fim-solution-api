@@ -27,8 +27,8 @@ public class Loan {
     private String id;
 
 
-    @Column(name = "loan_id", unique = true)
-    private String loanId;
+//    @Column(name = "loan_id", unique = true)
+//    private String loanId;
 
     private String nickName;
 
@@ -60,17 +60,17 @@ public class Loan {
     @Column(columnDefinition = "boolean default false")
     private boolean isLinkToLoanUser;
 
-    @OneToMany(mappedBy = "loan", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "loan", fetch = FetchType.LAZY, orphanRemoval = true, cascade = CascadeType.ALL)
     private List<LoanUser> loanUsers;
 
-    @OneToMany(mappedBy = "loan", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "loan", fetch = FetchType.LAZY, orphanRemoval = true, cascade = CascadeType.ALL)
     private List<Event> events;
 
-    @OneToMany(mappedBy = "loan", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "loan", fetch = FetchType.LAZY, orphanRemoval = true, cascade = CascadeType.ALL)
     private List<Schedule> schedules;
 
 
-    @OneToMany(mappedBy = "loan", orphanRemoval = true, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "loan", fetch = FetchType.LAZY, orphanRemoval = true, cascade = CascadeType.ALL)
     private List<Payment> payments;
 
     /**

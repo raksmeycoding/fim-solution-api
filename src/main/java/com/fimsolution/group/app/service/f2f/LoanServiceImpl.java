@@ -121,6 +121,7 @@ public class LoanServiceImpl implements LoanService {
         loanResDto.setRole(loanUser.get().getRole());
 
 
+
         latestSchedule.ifPresent(schedule -> loanResDto.setEndDate(schedule.getCreateAt()));
 
 
@@ -131,4 +132,8 @@ public class LoanServiceImpl implements LoanService {
 
 
     }
+
+
+
+
 }

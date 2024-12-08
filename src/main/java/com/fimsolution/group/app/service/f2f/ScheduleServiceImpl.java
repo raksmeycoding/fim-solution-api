@@ -20,6 +20,8 @@ import com.fimsolution.group.app.repository.f2f.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.annotation.QueryAnnotation;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -34,6 +36,7 @@ import java.util.stream.Collectors;
 
 
 @Service
+@Qualifier("ScheduleServiceImpl")
 @RequiredArgsConstructor
 public class ScheduleServiceImpl implements ScheduleService {
 
@@ -233,7 +236,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         scheduleAmountDueDto.setDue(closestSchedule.getDue() != null ? closestSchedule.getDue() : null);
         scheduleAmountDueDto.setStatus(closestSchedule.getStatus() != null ? closestSchedule.getStatus() : null);
         scheduleAmountDueDto.setSource(closestSchedule.getSource() != null ? closestSchedule.getSource() : null);
-        scheduleAmountDueDto.setLoanId(closestSchedule.getLoan().getLoanId() != null ? closestSchedule.getLoan().getLoanId() : null);
+//        scheduleAmountDueDto.setLoanId(closestSchedule.getLoan().getLoanId() != null ? closestSchedule.getLoan().getLoanId() : null);
 
 
         return scheduleAmountDueDto;
@@ -241,6 +244,21 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     }
 
+
+    @Override
+    public Optional<ScheduleAmountDueDto> getAmountDueForCurrentUserV2() {
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<ScheduleAmountDueDto> getAmountDueByLoanIdAndSourceEqualBorrower(String LoanId) {
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<ScheduleAmountDueDto> getAmountDueByLoanIdAndSourceEqualLender(String LoanId) {
+        return Optional.empty();
+    }
 
     @Override
     public ScheduleAmountDueDto getYouAreScheduleToReceive() {
@@ -312,7 +330,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         scheduleAmountDueDto.setDue(closestSchedule.getDue() != null ? closestSchedule.getDue() : null);
         scheduleAmountDueDto.setStatus(closestSchedule.getStatus() != null ? closestSchedule.getStatus() : null);
         scheduleAmountDueDto.setSource(closestSchedule.getSource() != null ? closestSchedule.getSource() : null);
-        scheduleAmountDueDto.setLoanId(closestSchedule.getLoan().getLoanId() != null ? closestSchedule.getLoan().getLoanId() : null);
+//        scheduleAmountDueDto.setLoanId(closestSchedule.getLoan().getLoanId() != null ? closestSchedule.getLoan().getLoanId() : null);
 
 
         return scheduleAmountDueDto;
@@ -372,5 +390,10 @@ public class ScheduleServiceImpl implements ScheduleService {
         scheduleAmountResDto.setSource(scheduleAmountResDto.getSource());
 
         return scheduleAmountResDto;
+    }
+
+    @Override
+    public ScheduleAmountDueDto getCalculatedPassedDueByLoanId(String LoanId) {
+        return null;
     }
 }

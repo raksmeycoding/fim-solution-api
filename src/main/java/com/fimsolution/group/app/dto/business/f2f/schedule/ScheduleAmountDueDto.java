@@ -22,6 +22,4 @@ public class ScheduleAmountDueDto {
     private STATUS status;
     private LocalDateTime createdAt;
     private Double due;
-
-
 }

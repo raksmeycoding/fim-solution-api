@@ -44,7 +44,7 @@ public class LoanMapper {
 
         return LoanDto.builder()
                 .id(loan.getId())
-                .loanId(loan.getLoanId())
+//                .loanId(loan.getLoanId())
                 .nickName(loan.getNickName())
                 .interest(loan.getInterest())
                 .loanType(loan.getLoanType())
@@ -66,7 +66,7 @@ public class LoanMapper {
 
         Loan loan = new Loan();
         loan.setId(dto.getId());
-        loan.setLoanId(dto.getLoanId());
+//        loan.setLoanId(dto.getLoanId());
         loan.setNickName(dto.getNickName());
         loan.setInterest(dto.getInterest());
         loan.setLoanType(dto.getLoanType());

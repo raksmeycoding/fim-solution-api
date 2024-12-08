@@ -8,19 +8,28 @@ import com.fimsolution.group.app.dto.business.f2f.schedule.ScheduleReqDto;
 import com.fimsolution.group.app.dto.business.f2f.schedule.ScheduleResDto;
 import com.fimsolution.group.app.mapper.business.f2f.ScheduleMapper;
 import com.fimsolution.group.app.service.f2f.ScheduleService;
+import com.fimsolution.group.app.service.f2f.ScheduleServiceImplV2;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.annotation.QueryAnnotation;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/f2f")
-@RequiredArgsConstructor
 public class ScheduleController {
 
     private final ScheduleService scheduleService;
+    private final ScheduleServiceImplV2 scheduleServiceImplV2;
+
+    public ScheduleController(@Qualifier("ScheduleServiceImpl") ScheduleService scheduleService, ScheduleServiceImplV2 scheduleServiceImplV2) {
+        this.scheduleService = scheduleService;
+        this.scheduleServiceImplV2 = scheduleServiceImplV2;
+    }
 
 
     @PostMapping("/schedule")
@@ -90,13 +99,13 @@ public class ScheduleController {
     }
 
 
-    @GetMapping("/schedule/past-due")
-    public ResponseEntity<RespondDto<ScheduleAmountDueDto>> getCalculatedPassedDue() {
+    @GetMapping("/schedule/past-due/{loanId}")
+    public ResponseEntity<RespondDto<ScheduleAmountDueDto>> getCalculatedPassedDue(@PathVariable("loanId") String loanId) {
         return ResponseEntity.status(HttpStatus.OK).body(
                 RespondDto.<ScheduleAmountDueDto>builder()
                         .httpStatusName(HttpStatus.OK)
                         .httpStatusCode(HttpStatus.OK.value())
-                        .data(scheduleService.getCalculatedPassedDue())
+                        .data(scheduleServiceImplV2.getCalculatedPassedDueByLoanId(loanId))
                         .build()
         );
     }

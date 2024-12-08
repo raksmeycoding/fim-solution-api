@@ -7,15 +7,22 @@ import com.fimsolution.group.app.exception.AlreadyExistException;
 import com.fimsolution.group.app.exception.NotFoundException;
 import com.fimsolution.group.app.mapper.business.f2f.UsersMapper;
 import com.fimsolution.group.app.model.business.f2f.User;
+import com.fimsolution.group.app.model.security.UserCredential;
 import com.fimsolution.group.app.repository.UserCredentialRepository;
 import com.fimsolution.group.app.repository.f2f.UsersRepository;
+import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 
 @Service("UsersServiceImpl")
 public class UsersServiceImpl implements UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UsersServiceImpl.class);
 
 
     private final UsersRepository usersRepository;
@@ -28,6 +35,7 @@ public class UsersServiceImpl implements UserService {
 
 
     @Override
+    @Transactional
     public UserResDto createUser(UserReqDto userReqDto) {
         // TODO: check if user is already existed or not in the security user
         // NOTE: create user
@@ -36,11 +44,22 @@ public class UsersServiceImpl implements UserService {
         usersRepository.findByEmail(userReqDto.getEmail())
                 .ifPresent(user ->
                 {
-                    throw new AlreadyExistException("User has already in system - or user already registered before admin created");
+                    throw new AlreadyExistException("User has already in system");
                 });
+
+        Optional<UserCredential> findUserCredentials = userCredentialRepository.findByUsername(userReqDto.getEmail());
+
+        if(findUserCredentials.isPresent()) {
+            User user = UsersMapper.toEntity(userReqDto);
+            user.setUserCredential(findUserCredentials.get());
+            return UsersMapper.toResDto(usersRepository.save(user));
+        }
 
         User user = UsersMapper.toEntity(userReqDto);
         return UsersMapper.toResDto(usersRepository.save(user));
+
+
+
     }
 
     @Override

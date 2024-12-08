@@ -12,9 +12,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UserLoginRequest {
-    @Schema(description = "The email address of the user", example = "john.doe@example.com")
+    @Schema(description = "The email address of the user", example = "admin@example.com")
     private String email;
 
-    @Schema(description = "The password of the user", example = "P@ssw0rd!")
+    @Schema(description = "The password of the user", example = "2H5pLJdKIzGdrt.&afYy")
     private String password;
 }

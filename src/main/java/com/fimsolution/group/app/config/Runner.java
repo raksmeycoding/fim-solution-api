@@ -66,6 +66,19 @@ public class Runner implements CommandLineRunner {
                 .build();
 
 
+        UserCredential raksmey = UserCredential.builder()
+                .accountNonExpired(true)
+                .accountNonLocked(true)
+                .credentialsNonExpired(true)
+                .enabled(true)
+                .lastname("raksmey")
+                .firstname("raksmey")
+                .phone("8557876874")
+                .username("raksmeykoung@gmail.com")
+                .password(passwordAdmin)
+                .build();
+
+
 //
 //
         UserRole userRole = UserRole.builder()
@@ -73,10 +86,18 @@ public class Runner implements CommandLineRunner {
                 .userCredential(userCredential)
                 .build();
 
+
+        UserRole raksmeyrole = UserRole.builder()
+                .role(role1)
+                .userCredential(raksmey)
+                .build();
+
         userCredential.setUserRole(Set.of(userRole));
+        raksmey.setUserRole(Set.of(raksmeyrole));
 
 
         userCredentialRepository.save(userCredential);
+        userCredentialRepository.save(raksmey);
 //
 
 

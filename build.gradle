@@ -43,7 +43,9 @@ dependencies {
 
 
 
-    testImplementation 'org.testng:testng:7.10.2'
+
+    testImplementation 'org.assertj:assertj-core:3.26.3'
+    implementation group: 'org.assertj', name: 'assertj-core', version: '3.26.3'
 
 
 
@@ -82,6 +84,8 @@ dependencies {
 }
 
 test {
-    useTestNG()
+//    useTestNG()
+    useJUnitPlatform()  // Use JUnit 5 platform
+
 }
 

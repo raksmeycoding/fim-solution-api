@@ -61,6 +61,7 @@ public class Schedule {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "loan_id")
+    @ToString.Exclude
     private Loan loan;
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.ALL})

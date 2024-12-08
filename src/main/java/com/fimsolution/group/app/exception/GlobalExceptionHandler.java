@@ -37,6 +37,19 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
+    @ExceptionHandler({NotFoundException.class})
+    public ResponseEntity<RespondDto<?>> handleNotFoundException(NotFoundException exception) {
+//        logger.error(":::Unhandled exception occurred:::", exception);
+        logger.error(":::Unhandled exception occurred::: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(RespondDto.builder()
+                .errorMessage(exception.getMessage())
+                .httpStatusCode(HttpStatus.NOT_FOUND.value())
+                .httpStatusName(HttpStatus.NOT_FOUND)
+                .data(null)
+                .build());
+
+    }
+
 
     @ExceptionHandler({AlreadyExistException.class})
     @org.springframework.web.bind.annotation.ResponseStatus(HttpStatus.CONFLICT)

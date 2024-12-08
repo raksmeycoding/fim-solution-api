@@ -6,6 +6,7 @@ import com.fimsolution.group.app.dto.business.f2f.schedule.ScheduleReqDto;
 import com.fimsolution.group.app.dto.business.f2f.schedule.ScheduleResDto;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ScheduleService {
     ScheduleResDto createSchedule(ScheduleReqDto scheduleReqDto);
@@ -26,10 +27,17 @@ public interface ScheduleService {
     List<ScheduleResDto> getScheduleByLoanId(String loanId);
 
     ScheduleAmountDueDto getAmountDueForCurrentUser();
+    Optional<ScheduleAmountDueDto> getAmountDueForCurrentUserV2();
+
+
+    Optional<ScheduleAmountDueDto> getAmountDueByLoanIdAndSourceEqualBorrower(String LoanId);
+    Optional<ScheduleAmountDueDto> getAmountDueByLoanIdAndSourceEqualLender(String LoanId);
 
     ScheduleAmountDueDto getYouAreScheduleToReceive();
 
     ScheduleAmountDueDto getCalculatedPassedDue();
+
+    ScheduleAmountDueDto getCalculatedPassedDueByLoanId(String LoanId);
 }
 
 

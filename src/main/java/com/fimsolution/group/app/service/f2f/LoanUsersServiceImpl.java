@@ -16,6 +16,7 @@ import com.fimsolution.group.app.model.business.f2f.User;
 import com.fimsolution.group.app.repository.f2f.LoanRepository;
 import com.fimsolution.group.app.repository.f2f.LoanUsersRepository;
 import com.fimsolution.group.app.repository.f2f.UsersRepository;
+import com.fimsolution.group.app.utils.SecurityUtils;
 import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -200,5 +201,14 @@ public class LoanUsersServiceImpl implements LoanUsersService {
     @Override
     public List<LoanUserProjection> getLoanUsers() {
         return loanUsersRepository.findAllLoanUserProjects();
+    }
+
+    @Override
+    public Optional<LoanUserProjection> checkLoanUserHasDefaultLoan() {
+
+        String username = SecurityUtils.getCurrentUser();
+
+        return loanUsersRepository.checkLoanUserHasDefaultLoanOrNot(username);
+
     }
 }

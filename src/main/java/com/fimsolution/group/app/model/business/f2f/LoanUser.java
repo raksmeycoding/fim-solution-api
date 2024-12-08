@@ -13,7 +13,9 @@ import java.util.List;
 @Getter
 @Setter
 @ToString
+@Builder
 @RequiredArgsConstructor
+@AllArgsConstructor
 public class LoanUser {
 
     @Id
@@ -51,7 +53,7 @@ public class LoanUser {
     private String email;
 
     @JoinColumn(name = "user_id")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.ALL})
+    @ManyToOne(fetch = FetchType.LAZY)
     @ToString.Exclude
     private User user;
 

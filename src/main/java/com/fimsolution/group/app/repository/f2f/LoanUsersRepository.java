@@ -22,10 +22,17 @@ public interface LoanUsersRepository extends JpaRepository<LoanUser, String> {
             """)
     List<LoanUserProjection> findAllLoanUserProjects();
 
+
     boolean existsByUserIdAndLoanId(String userId, String loanId);
 
     Optional<LoanUser> findFirstByUserIdAndLoanId(String userId, String loanId);
 
     Optional<LoanUser> findLoanUserByUserEmailAndPrioritize(String email, PRIORITIZE prioritize);
+
+
+    @Query("""
+            select lu from LoanUser lu join User us on us.id = lu.user.id join UserCredential uc on us.userCredential.id = uc.id where (lu.email = :username or us.email = :username) and lu.prioritize = 'DEFAULT' 
+            """)
+    Optional<LoanUserProjection> checkLoanUserHasDefaultLoanOrNot(String username);
 
 }

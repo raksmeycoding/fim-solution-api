@@ -8,7 +8,6 @@ import org.springframework.http.HttpStatus;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public class RespondDto<T> {
 
     private HttpStatus httpStatusName;
