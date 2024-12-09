@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -25,7 +27,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({Exception.class})
     @org.springframework.web.bind.annotation.ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ResponseEntity<RespondDto<?>> handleRuntimeException(Exception exception) {
-        logger.error(":::Unhandled exception occurred:::", exception);
+        String errorId = UUID.randomUUID().toString();
+        logger.error("Error ID {}: {}", errorId, exception.getMessage());
+        logger.error(":::Unhandled exception occurred object:::", exception);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(RespondDto.builder()
@@ -33,13 +37,29 @@ public class GlobalExceptionHandler {
                         .httpStatusName(HttpStatus.INTERNAL_SERVER_ERROR)
                         .httpStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
                         .errorMessage(exception.getMessage())
-                        .data(null)
+                        .data(RespondDto.builder().data(Map.of("errorId", errorId)).build())
                         .build());
     }
 
+    @ExceptionHandler(InternalAuthenticationServiceException.class)
+    public ResponseEntity<?> handleAuthException(InternalAuthenticationServiceException exception) {
+        String errorId = UUID.randomUUID().toString();
+        logger.error("Error ID {}: {}", errorId, exception.getMessage());
+        logger.error(":::Unhandled exception occurred object:::", exception);
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(RespondDto.builder()
+                        .message(exception.getMessage())
+                        .httpStatusName(HttpStatus.UNAUTHORIZED)
+                        .httpStatusCode(HttpStatus.UNAUTHORIZED.value())
+                        .errorMessage(exception.getMessage())
+                        .data(RespondDto.builder().data(Map.of("errorId", errorId)).build())
+                        .build());
+    }
+
+
     @ExceptionHandler({NotFoundException.class})
     public ResponseEntity<RespondDto<?>> handleNotFoundException(NotFoundException exception) {
-//        logger.error(":::Unhandled exception occurred:::", exception);
         logger.error(":::Unhandled exception occurred::: {}", exception.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(RespondDto.builder()
                 .errorMessage(exception.getMessage())

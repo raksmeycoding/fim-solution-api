@@ -1,6 +1,7 @@
 package com.fimsolution.group.app.security;
 
 
+import com.fimsolution.group.app.exception.NotFoundException;
 import com.fimsolution.group.app.model.security.UserCredential;
 import com.fimsolution.group.app.model.security.UserDetailsImpl;
 import com.fimsolution.group.app.repository.UserCredentialRepository;
@@ -32,7 +33,7 @@ public class UserDetailsServiceImpl implements org.springframework.security.core
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         logger.debug("Entering in loadUserByUsername Method...");
         UserCredential user = userCredentialRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User has not been found"));
+                .orElseThrow(() -> new NotFoundException("User has not been found"));
         logger.info("User Authenticated Successfully");
         logger.info("UserCredentials: {}", user);
         return UserDetailsImpl.buildUserCredentials(user);

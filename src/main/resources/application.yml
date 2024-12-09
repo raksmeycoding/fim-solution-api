@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: dev
+    active: prod
 
 #logging:
 #  level:
@@ -12,14 +12,23 @@ spring:
 #      hibernate: DEBUG
 
 logging:
+#  file:
+#    format: JSON
+#  json:
+#    enabled: true
   level:
+    root: ${LOG_LEVEL:INFO} # Default log level (set via environment variable or fallback to INFO)
     org:
-      #      flywaydb: DEBUG
-      #      hibernate:
-      #        sql: DEBUG
-      springframework: INFO
-    root: ${LOG_LEVEL:INFO}
-  config: classpath:logback.xml
+      springframework: INFO # Spring framework logs at INFO level
+      hibernate:
+        SQL: DEBUG # Hibernate SQL logs
+        type:
+          descriptor:
+            sql: TRACE # Detailed trace for Hibernate SQL descriptors
+      flywaydb: DEBUG # Flyway logs at DEBUG level
+  config: classpath:logback.xml # Specify custom logback configuration
+
+
 
 #logging:
 #  level:

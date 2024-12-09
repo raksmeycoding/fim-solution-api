@@ -1,11 +1,13 @@
 package com.fimsolution.group.app.service.seviceImpl;
 
 
+import com.fimsolution.group.app.constant.FimRole;
 import com.fimsolution.group.app.constant.ResponseStatus;
 import com.fimsolution.group.app.dto.GenericDto;
 
 import com.fimsolution.group.app.dto.RequestDto;
 import com.fimsolution.group.app.dto.RespondDto;
+import com.fimsolution.group.app.dto.auth.SessionDto;
 import com.fimsolution.group.app.exception.AlreadyExistException;
 import com.fimsolution.group.app.model.business.f2f.User;
 import com.fimsolution.group.app.model.security.*;
@@ -20,6 +22,7 @@ import com.fimsolution.group.app.service.AuthenticationService;
 import com.fimsolution.group.app.service.RoleService;
 import com.fimsolution.group.app.utils.JwtUtils;
 import com.fimsolution.group.app.utils.ProfileHelper;
+import com.fimsolution.group.app.utils.SecurityUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +38,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.webjars.NotFoundException;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -207,5 +211,31 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
 
         return null;
+    }
+
+
+    @Override
+    public SessionDto verifyUserRoleBasedAccess() {
+        List<String> roles = SecurityUtils.getRoles();
+        logger.info("roles: {}", roles);
+        SessionDto sessionDto = new SessionDto();
+
+        for (String role : roles) {
+
+            if (FimRole.ROLE_ADMIN.toString().equals(role)) {
+                sessionDto.setAdmin(true);
+            }
+
+            if (FimRole.ROLE_USER.toString().equals(role)) {
+                sessionDto.setRegisterUser(true);
+            }
+
+            if (!FimRole.ROLE_ADMIN.toString().equals(role) || !FimRole.ROLE_USER.toString().equals(role)) {
+                sessionDto.setOther(true);
+            }
+
+
+        }
+        return sessionDto;
     }
 }

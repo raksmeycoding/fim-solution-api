@@ -20,7 +20,6 @@ public class CookieUtils {
                     .findFirst();
         } catch (Exception e) {
             logger.error("Failed to read cookie");
-            logger.error(e.getMessage(), e);
             return Optional.empty();
         }
     }
@@ -34,7 +33,6 @@ public class CookieUtils {
                     .findAny();
         } catch (Exception e) {
             logger.error("Failed to read cookie");
-            logger.error(e.getMessage(), e);
             return Optional.empty();
         }
     }

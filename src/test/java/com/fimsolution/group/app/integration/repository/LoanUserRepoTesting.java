@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @DisplayName("LoanUser Repository Test Suite")
-public class LoanUserRepoTesting {
+public class  LoanUserRepoTesting {
 
     private static final String TEST_USER_EMAIL = "david@gmail.com"; // Constant for repetitive values
     private static final Logger logger = LoggerFactory.getLogger(LoanUserRepoTesting.class);
